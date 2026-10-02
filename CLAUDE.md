@@ -7,13 +7,14 @@ truth; when a pin or a protocol message changes, change it there too.
 ## Layout
 
 - `drive/`: PlatformIO project for the ESP32 DevKit V1 (motors, encoders,
-  gamepad, failsafe). Currently at milestone 2. It is an ESP-IDF project with
+  gamepad, failsafe, program engine). Milestones 2, 5 and 6 are in. It is an ESP-IDF project with
   Arduino as a component (Bluepad32 needs BTstack), so sources live in
   `drive/main/` and every new .cpp must be added to `drive/main/CMakeLists.txt`.
   The arduino/bluepad32/btstack components are fetched by
   `drive/tools/fetch_components.sh` and are not checked in. Arduino core is
   3.x: `ledcAttach(pin, ...)` / `ledcWrite(pin, ...)`, not channels.
-  Hardware-free logic (mixing, battery thresholds, protocol parsing) lives in
+  Hardware-free logic (mixing, battery thresholds, protocol parsing,
+  program queue/RPT expansion, move planning) lives in
   header-only files with native tests: `pio test -e native`.
 - `ui/`: PlatformIO project for the CYD touchscreen (milestone 3).
 - `docs/SPEC.md`: copy of the spec from the Obsidian vault
@@ -34,6 +35,8 @@ truth; when a pin or a protocol message changes, change it there too.
   independently flashable and independently testable: the UART protocol is
   plain newline-terminated ASCII specifically so either half can be driven
   from a serial monitor with the other half unplugged.
+- Encoder calibration lives in NVS (`settings.cpp`, console `cal`), with
+  defaults in `config.h`. Don't hardcode measured tick counts.
 - Motor speeds are signed duty, -255..255, positive is forward.
 - Tuning constants go in `config.h`, not scattered through the source.
 - The project moved from `~/development/my_dev/bigtrak` to `~/projects/bigtrak`.

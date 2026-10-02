@@ -105,3 +105,52 @@ constexpr uint32_t BATT_REPORT_MS = 5000;
 // --------------------------------------------------------------- cannon ----
 constexpr uint32_t CANNON_ON_MS = 120;
 constexpr uint32_t CANNON_OFF_MS = 120;
+
+// ------------------------------------------------------------- encoders ----
+// Hall encoders on the 25GA-370s, counted by the PCNT peripheral in full
+// quadrature (4 counts per encoder line per pulse). Set false to run
+// programs on timing alone, e.g. before the encoder motors arrive.
+constexpr bool ENCODERS_ENABLED = true;
+
+// If driving forward counts down on a side, flip it here.
+constexpr bool ENC_INVERT_LEFT = false;
+constexpr bool ENC_INVERT_RIGHT = false;
+
+// Pulses narrower than this are noise from the motor leads, not ticks.
+constexpr uint32_t ENC_GLITCH_NS = 1000;
+
+// ---------------------------------------------------- programmed moves ----
+// Calibration. These are starting guesses; the real values come from the
+// procedure in the README and are stored in flash with the "cal" console
+// command, so they survive reflashing without editing this file.
+//
+// One Big Trak unit is about 13 inches. Turns are in "clock minutes":
+// 15 is a quarter turn, 60 is a full spin.
+constexpr int32_t DEFAULT_TICKS_PER_UNIT = 2000;
+constexpr int32_t DEFAULT_TICKS_PER_MINUTE = 60;
+
+// Timed fallback when ENCODERS_ENABLED is false. Drifts with battery sag,
+// which is the whole reason the encoders exist.
+constexpr uint32_t MS_PER_UNIT = 1200;
+constexpr uint32_t MS_PER_MINUTE = 50;
+
+// Cruise and approach speeds for programmed moves, as a fraction of full
+// duty. The last PROGRAM_SLOWDOWN_FRACTION of each move (at most
+// PROGRAM_SLOWDOWN_TICKS) runs at the slow speed so the tank stops on the
+// mark instead of coasting past it.
+constexpr float PROGRAM_SPEED = 0.50f;
+constexpr float PROGRAM_SLOW_SPEED = 0.25f;
+constexpr float PROGRAM_SLOWDOWN_FRACTION = 0.25f;
+constexpr int32_t PROGRAM_SLOWDOWN_TICKS = 600;
+
+// Keeps straight moves straight: duty correction per tick of left/right
+// difference. Too high and it wobbles; too low and it drifts.
+constexpr float PROGRAM_STRAIGHT_KP = 0.004f;
+
+// Brake pause between steps, so one move's momentum doesn't leak into the
+// next (especially a forward run followed by a spin).
+constexpr uint32_t PROGRAM_SETTLE_MS = 250;
+
+// Stall protection for the TB6612 (1.2A continuous per channel): if a move
+// is under power and the encoders haven't advanced in this long, abort.
+constexpr uint32_t STALL_TIMEOUT_MS = 500;

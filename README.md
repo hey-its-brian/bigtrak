@@ -18,10 +18,10 @@ The full design (architecture, BOM, pin map, UART protocol) is in
 |---|---|---|
 | 1 | Drive board on blocks: hardcoded motion test | done, untested on hardware |
 | 2 | Gamepad driving (Bluepad32, mixing, disconnect failsafe) | **done, untested on hardware** |
-| 3 | CYD standalone: keypad UI, touch, beeps | in progress |
-| 4 | UART integration | not started |
-| 5 | Program engine (queue execution, timed moves) | not started |
-| 6 | Encoders: closed-loop distance and turns | not started |
+| 3 | CYD standalone: keypad UI, touch, beeps | done, untested on hardware |
+| 4 | UART integration | drive side done; CYD still talks over USB (`LINK_OVER_USB`) |
+| 5 | Program engine (queue execution, timed moves) | **done, untested on hardware** |
+| 6 | Encoders: closed-loop distance and turns | **done, needs calibration on the tank** |
 | 7 | Polish: cannon LED, sounds, battery display | not started |
 
 ## drive/ (ESP32 DevKit V1)
@@ -37,16 +37,18 @@ cd drive
 ./tools/fetch_components.sh
 ```
 
-That pulls the Arduino core 3.2.1, Bluepad32 and BTstack components at a
-pinned commit into `drive/components/` (not checked in). The first
-`pio run` then downloads ESP-IDF 5.4 and takes several minutes.
+That pulls Bluepad32 and BTstack at a pinned template commit and the Arduino
+core at tag 3.3.12 into `drive/components/` (not checked in). The platform is
+pioarduino 55.03.312 (ESP-IDF 5.5.5); the first `pio run` downloads it and
+takes several minutes.
 
 ```bash
 pio run -t upload && pio device monitor
 ```
 
 Unit tests for the hardware-free logic (stick mixing, ramping, battery
-thresholds, protocol parsing) run on the Mac:
+thresholds, protocol parsing, program queue and RPT expansion, move
+planning) run on the Mac:
 
 ```bash
 pio test -e native
@@ -69,6 +71,57 @@ Speed-ups are ramped and slow-downs are quick (`ACCEL_PER_SEC` and
 `DECEL_PER_SEC` in `config.h`). If the pad disconnects, the motors brake
 immediately. Only one pad drives; a second one is refused.
 
+### Programs
+
+The CYD sends a program one step per line, then `GO` (see the protocol in
+the spec). Each line gets `ACK` or `ERR <reason>`. While it runs, the drive
+board reports `STEP n` (the program row, counting from 1) as each step
+starts and `DONE` at the end.
+
+- `FWD n` / `BACK n`: n units of about 13 inches.
+- `LEFT n` / `RIGHT n`: spin in place n clock minutes (15 is 90 degrees).
+- `FIRE n`: n cannon flashes. `HOLD n`: pause n tenths of a second.
+- `RPT n`: replay the n steps before it once. Nested repeats expand too; a
+  program that would expand past 256 steps is refused.
+
+Moves are closed-loop on the wheel encoders: cruise at 50%, slow to 25% for
+the last stretch, and trim the faster wheel so straight runs stay straight.
+There's a short brake between steps. If a wheel stops turning under power
+for half a second (a wall, a jammed track, an unplugged encoder), the run
+stops with `ERR stall` to protect the TB6612. Before the encoder motors are
+fitted, set `ENCODERS_ENABLED = false` in `config.h` and moves are timed
+instead (`MS_PER_UNIT`, `MS_PER_MINUTE`).
+
+The gamepad always wins: touching a stick or Cross/A during a program brakes,
+drops the program and sends `ERR gamepad override`, and the pad has the tank.
+A pad disconnecting mid-program doesn't stop it, since the program isn't
+using the pad. `STOP` and `CLS` abort a run from the CYD; anything else sent
+during a run gets `ERR busy`.
+
+### Calibrating the encoders
+
+The tick counts per unit and per clock minute depend on the motors' gear
+ratio and the wheel size, so they're measured on the tank and saved to flash
+with the console (no reflashing). Lay out a tape measure.
+
+1. **Rough distance.** `enc zero`, drive straight along the tape with the pad
+   for exactly 5 units (65 inches), then `enc`. Average the two counts,
+   divide by 5: `cal unit <that>`.
+2. **Rough turns.** `enc zero`, spin in place with the pad through 4 full
+   turns (240 clock minutes), then `enc`. Average the two counts (ignore
+   the signs), divide by 240: `cal min <that>`.
+3. **Refine distance.** From the console: `CLS`, `FWD 5`, `GO`. Measure how
+   far it went in inches. New value = old value x 65 / measured. Repeat
+   until it's within half an inch.
+4. **Refine turns.** `CLS`, `RIGHT 60`, `GO` (one full spin). If it
+   overshoots by d degrees, new value = old value x 360 / (360 + d); if it
+   comes up short, use (360 - d).
+
+`cal` shows the stored values and `cal reset` goes back to the `config.h`
+defaults. Turns depend on the floor (carpet scrubs more than wood), so
+calibrate where the tank will actually run. If straight runs wobble, lower
+`PROGRAM_STRAIGHT_KP`; if they drift, raise it.
+
 ### Battery
 
 The 3S pack is read on GPIO36 and sent to the CYD as `BATT v.vv` every five
@@ -84,15 +137,18 @@ Type into the serial monitor at 115200:
 
 | Command | Does |
 |---|---|
-| `status` | pad, battery and motor state |
+| `status` | pad, battery, motor, program and encoder state |
+| `prog` | list the queued program |
+| `enc` / `enc zero` | show or zero the encoder counts |
+| `cal unit <ticks>` / `cal min <ticks>` / `cal reset` | encoder calibration, saved in flash |
 | `test` | the milestone 1 motion test (wheels off the bench, pad disconnected) |
 | `forget` | erase stored pad pairings |
 | `help` | the list |
 
-Protocol lines work too, exactly as the CYD sends them (`STOP`, `CLS`, ...),
-so the drive board can be tested with the touchscreen unplugged. Queue
-commands (`FWD 5`, `GO`) are parsed and validated but answer
-`ERR not implemented` until the program engine lands in milestone 5.
+Protocol lines work too, exactly as the CYD sends them (`FWD 2`, `RIGHT 15`,
+`GO`, `STOP`), so the drive board can be tested with the touchscreen
+unplugged. Replies come back on USB; `STEP`/`DONE` go to the CYD link and
+are echoed to USB as `[link] > ...`.
 
 ### Before the first run
 
@@ -112,6 +168,7 @@ commands (`FWD 5`, `GO`) are parsed and validated but answer
 | Buzzing, no rotation at slow speed | Raise `MOTOR_MIN_DUTY` |
 | Board resets when the ramp gets going | Regulator or battery sag: check `VM` vs the 5V rail under load |
 | Nothing moves at all | `STBY` low, `VM` not connected, or battery cutoff latched (`status`) |
+| Every programmed move ends in `ERR stall` | Encoders not connected or not counting: check `enc` while driving with the pad |
 
 Pin assignments and tuning constants live in
 [drive/main/config.h](drive/main/config.h) and mirror the spec.

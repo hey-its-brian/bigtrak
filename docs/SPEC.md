@@ -113,7 +113,7 @@ Newline-terminated ASCII text, 115200 baud. Human-readable by design so either b
 | Message | Meaning |
 |---|---|
 | `ACK` | command accepted/queued |
-| `ERR <reason>` | rejected (bad arg, queue full) |
+| `ERR <reason>` | rejected or aborted. Reasons: `unknown command`, `missing argument`, `bad argument`, `argument out of range`, `unexpected argument`, `queue full`, `nothing to repeat`, `empty program`, `program too long`, `busy` (program running), `stall`, `gamepad override`, `battery cutoff` |
 | `STEP n` | now executing queue step n, counting from 1 (UI highlights it) |
 | `DONE` | program finished |
 | `BATT v.vv` | battery voltage, sent every ~5s |
