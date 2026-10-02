@@ -152,3 +152,12 @@ monitor (`STEP 2`, `BATT 11.80`, `PAD CONNECTED`, `DONE`) update the screen.
 Things to check on first power-up: rotation and touch mapping, colour
 inversion or red/blue swap (both flags in `config.h`), the GT911 address
 (0x5D, some answer at 0x14), and 40 MHz SPI (drop to 27 MHz if it glitches).
+
+## License
+
+MIT, see [LICENSE](LICENSE). The exception is `drive/main/main.c`, adapted
+from Ricardo Quesada's
+[esp-idf-arduino-bluepad32-template](https://github.com/ricardoquesada/esp-idf-arduino-bluepad32-template),
+which stays under Apache-2.0 as marked in its header. The Bluepad32, BTstack
+and Arduino components fetched by `drive/tools/fetch_components.sh` keep
+their own licenses.
