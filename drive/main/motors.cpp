@@ -21,7 +21,10 @@ int applyFloor(int speed) {
   return speed > 0 ? magnitude : -magnitude;
 }
 
-void driveChannel(int speed, bool invert, int in1, int in2, int pwmChannel) {
+bool inhibited = false;
+
+void driveChannel(int speed, bool invert, int in1, int in2, int pwmPin) {
+  if (inhibited) speed = 0;
   speed = applyFloor(clampSpeed(speed));
   if (invert) speed = -speed;
 
@@ -37,7 +40,7 @@ void driveChannel(int speed, bool invert, int in1, int in2, int pwmChannel) {
     digitalWrite(in2, LOW);
   }
 
-  ledcWrite(pwmChannel, abs(speed));
+  ledcWrite(pwmPin, abs(speed));
 }
 
 }  // namespace
@@ -55,10 +58,10 @@ void begin() {
     digitalWrite(PIN_STBY, HIGH);  // low = driver disabled, nothing moves
   }
 
-  ledcSetup(PWM_CHANNEL_LEFT, PWM_FREQ_HZ, PWM_RESOLUTION);
-  ledcSetup(PWM_CHANNEL_RIGHT, PWM_FREQ_HZ, PWM_RESOLUTION);
-  ledcAttachPin(PIN_PWMA, PWM_CHANNEL_LEFT);
-  ledcAttachPin(PIN_PWMB, PWM_CHANNEL_RIGHT);
+  // Arduino core 3.x: LEDC channels are allocated per pin, and ledcWrite()
+  // takes the pin rather than a channel number.
+  ledcAttach(PIN_PWMA, PWM_FREQ_HZ, PWM_RESOLUTION);
+  ledcAttach(PIN_PWMB, PWM_FREQ_HZ, PWM_RESOLUTION);
 
   coast();
 }
@@ -69,11 +72,11 @@ void drive(int left, int right) {
 }
 
 void setLeft(int speed) {
-  driveChannel(speed, INVERT_LEFT, PIN_AIN1, PIN_AIN2, PWM_CHANNEL_LEFT);
+  driveChannel(speed, INVERT_LEFT, PIN_AIN1, PIN_AIN2, PIN_PWMA);
 }
 
 void setRight(int speed) {
-  driveChannel(speed, INVERT_RIGHT, PIN_BIN1, PIN_BIN2, PWM_CHANNEL_RIGHT);
+  driveChannel(speed, INVERT_RIGHT, PIN_BIN1, PIN_BIN2, PIN_PWMB);
 }
 
 void coast() {
@@ -85,8 +88,17 @@ void brake() {
   digitalWrite(PIN_AIN2, HIGH);
   digitalWrite(PIN_BIN1, HIGH);
   digitalWrite(PIN_BIN2, HIGH);
-  ledcWrite(PWM_CHANNEL_LEFT, MOTOR_MAX_DUTY);
-  ledcWrite(PWM_CHANNEL_RIGHT, MOTOR_MAX_DUTY);
+  ledcWrite(PIN_PWMA, MOTOR_MAX_DUTY);
+  ledcWrite(PIN_PWMB, MOTOR_MAX_DUTY);
+}
+
+void setInhibit(bool on) {
+  inhibited = on;
+  if (on) brake();
+}
+
+bool isInhibited() {
+  return inhibited;
 }
 
 }  // namespace motors

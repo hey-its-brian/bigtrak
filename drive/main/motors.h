@@ -13,10 +13,15 @@ void drive(int left, int right);
 void setLeft(int speed);
 void setRight(int speed);
 
-// Both outputs floating — the tank rolls to a stop.
+// Both outputs floating: the tank rolls to a stop.
 void coast();
 
-// Both outputs low — the motors resist turning. Use this for a hard stop.
+// Both outputs shorted: the motors resist turning. Use this for a hard stop.
 void brake();
+
+// While inhibited every drive request becomes a stop. The battery cutoff uses
+// this so nothing upstream can accidentally run a flat pack.
+void setInhibit(bool on);
+bool isInhibited();
 
 }  // namespace motors
