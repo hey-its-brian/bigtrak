@@ -8,3 +8,6 @@ drive/managed_components/
 drive/dependencies.lock
 drive/sdkconfig.*
 !drive/sdkconfig.defaults
+
+# cad/: rendered by cad/build.sh
+cad/out/

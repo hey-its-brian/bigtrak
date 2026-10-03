@@ -156,10 +156,11 @@ Newline-terminated ASCII text, 115200 baud. Human-readable by design so either b
 
 ## Physical Notes
 
-- Original gearbox/motor fully removed; two independent motors, skid-steer (no original single-motor turn mechanism).
+- The **middle** pair of wheels is the driven pair on the 1979 Big Trak (front and rear are idlers). The original gearbox is a sealed underbelly unit holding both motors and the middle wheels, fixed by 4 screws.
+- Original gearbox fully removed; a printed drive pod (`cad/drive_pod.scad`) bolts to the same 4 screw points and holds two JGA25-370 encoder motors back to back, each driving a printed middle wheel directly (`cad/drive_wheel.scad`, #232 O-ring tyres like the original). Skid steer, no axle.
 - Keep the original membrane keypad intact and stored (collector value).
 - USB access: route/expose USB-C via the battery-door area for reflashing without opening shell.
-- Wheelbase / wheel bore / recess dimensions: **TODO: measure** and record here before modeling mounts.
+- Tank dimensions (middle wheel gap, axle height, gearbox screw positions, keypad recess): **TODO: measure** and record in `cad/params.scad` (the `MEASURE` values).
 
 ## Constraints & Gotchas (learned the hard way, pre-emptively)
 

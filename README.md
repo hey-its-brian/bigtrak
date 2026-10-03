@@ -210,6 +210,11 @@ Things to check on first power-up: rotation and touch mapping, colour
 inversion or red/blue swap (both flags in `config.h`), the GT911 address
 (0x5D, some answer at 0x14), and 40 MHz SPI (drop to 27 MHz if it glitches).
 
+## cad/ (printed parts)
+
+Parametric OpenSCAD for the drive pod, drive wheels, and CYD bezel and back
+cover. See [cad/README.md](cad/README.md); start with the fit tests.
+
 ## License
 
 MIT, see [LICENSE](LICENSE). The exception is `drive/main/main.c`, adapted
